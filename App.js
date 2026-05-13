@@ -7,6 +7,7 @@ import {
   Animated,
   SafeAreaView,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -33,7 +34,7 @@ function nextId() {
 }
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     PlayfairDisplay_400Regular,
     PlayfairDisplay_500Medium,
     PlayfairDisplay_700Bold,
@@ -111,13 +112,13 @@ export default function App() {
     setQueue((prev) => [...prev, { ...task, id: nextId() }]);
   }
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded && !fontError) return null;
 
   const isFlux = activeTab === 'flux';
   const isFait = activeTab === 'fait';
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, ...(Platform.OS === 'web' && { height: '100vh' }) }}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.safe}>
         <View style={styles.app}>
