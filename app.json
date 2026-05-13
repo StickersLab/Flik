@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "FLIK",
+    "slug": "flik",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#f5f3ee"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.flik.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f5f3ee"
+      },
+      "package": "com.flik.app"
+    },
+    "plugins": [
+      "expo-av"
+    ]
+  }
+}
