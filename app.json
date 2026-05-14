@@ -23,6 +23,9 @@
     },
     "plugins": [
       "expo-av"
-    ]
+    ],
+    "experiments": {
+      "baseUrl": "/Flik"
+    }
   }
 }

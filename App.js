@@ -26,6 +26,7 @@ import { Stack, ClearedScreen } from './src/components/Stack';
 import { BottomBar } from './src/components/BottomBar';
 import { AddModal } from './src/components/AddModal';
 import { useSounds } from './src/hooks/useSounds';
+import { useStorage } from './src/hooks/useStorage';
 import { initialTasks } from './src/data/initialTasks';
 
 let _nextId = 100;
@@ -43,8 +44,7 @@ export default function App() {
     DMSans_400Regular,
   });
 
-  const [queue, setQueue] = useState(initialTasks);
-  const [doneList, setDoneList] = useState([]);
+  const { queue, setQueue, doneList, setDoneList, loaded } = useStorage(initialTasks);
   const [removedTask, setRemovedTask] = useState(null);
   const [activeTab, setActiveTab] = useState('flux');
   const [showModal, setShowModal] = useState(false);
@@ -112,7 +112,7 @@ export default function App() {
     setQueue((prev) => [...prev, { ...task, id: nextId() }]);
   }
 
-  if (!fontsLoaded && !fontError) return null;
+  if ((!fontsLoaded && !fontError) || !loaded) return null;
 
   const isFlux = activeTab === 'flux';
   const isFait = activeTab === 'fait';
