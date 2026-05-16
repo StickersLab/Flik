@@ -46,7 +46,7 @@ async function signIn(email, password) {
 async function signInGoogle() {
   await sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.origin + '/flik.html' },
+    options: { redirectTo: 'https://stickerslab.github.io/Flik/flik.html' },
   });
 }
 
@@ -54,7 +54,7 @@ async function signInGoogle() {
 async function signInApple() {
   await sb.auth.signInWithOAuth({
     provider: 'apple',
-    options: { redirectTo: window.location.origin + '/flik.html' },
+    options: { redirectTo: 'https://stickerslab.github.io/Flik/flik.html' },
   });
 }
 
