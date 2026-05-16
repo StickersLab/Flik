@@ -402,9 +402,12 @@
 <div class="app">
   <div class="header">
     <div class="logo">FLIK</div>
-    <button class="add-btn" onclick="openModal()" aria-label="Ajouter une tâche">
-      <svg viewBox="0 0 16 16"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
-    </button>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button onclick="signOut()" style="background:none;border:none;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:2px;color:#aaa;cursor:pointer;text-transform:uppercase;-webkit-tap-highlight-color:transparent;">Quitter</button>
+      <button class="add-btn" onclick="openModal()" aria-label="Ajouter une tâche">
+        <svg viewBox="0 0 16 16"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      </button>
+    </div>
   </div>
 
   <div class="arena" id="arena">
