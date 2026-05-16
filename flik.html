@@ -395,6 +395,141 @@
   .modal-btn.cancel { background: transparent; color: var(--text); }
   .modal-btn.confirm { background: var(--text); color: var(--bg); }
   .modal-btn:active { transform: scale(0.97); }
+
+  /* HAMBURGER */
+  .hamburger {
+    background: none; border: none; cursor: pointer;
+    display: flex; flex-direction: column;
+    gap: 5px; padding: 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hamburger span {
+    display: block; width: 22px; height: 1.5px;
+    background: var(--text); border-radius: 2px;
+    transition: transform 0.2s;
+  }
+
+  /* DRAWER */
+  .menu-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.25);
+    z-index: 300; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .menu-overlay.visible { opacity: 1; pointer-events: all; }
+
+  .menu-drawer {
+    position: fixed; top: 0; right: 0;
+    width: 285px; height: 100%;
+    background: var(--bg);
+    z-index: 301;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    display: flex; flex-direction: column;
+    padding: 64px 32px 48px;
+  }
+  .menu-drawer.visible { transform: translateX(0); }
+
+  .menu-user {
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 0.5px solid var(--chain);
+  }
+  .menu-user-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px; font-weight: 700;
+    color: var(--text); letter-spacing: 1px;
+  }
+  .menu-user-email {
+    font-size: 11px; color: var(--muted);
+    letter-spacing: 0.5px; margin-top: 4px;
+  }
+
+  .menu-item {
+    font-family: 'Playfair Display', serif;
+    font-size: 19px; font-weight: 500;
+    color: var(--text); letter-spacing: 1px;
+    padding: 14px 0;
+    border-bottom: 0.5px solid var(--chain);
+    cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .menu-item:active { opacity: 0.5; }
+  .menu-item .count {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; color: var(--muted);
+    background: var(--chain);
+    padding: 2px 9px; border-radius: 20px;
+  }
+  .menu-item.active-section { color: var(--text); font-weight: 700; }
+
+  .menu-stats {
+    margin-top: 20px; padding-top: 20px;
+    border-top: 0.5px solid var(--chain);
+    display: flex; gap: 20px;
+  }
+  .menu-stat { display: flex; flex-direction: column; gap: 2px; }
+  .menu-stat-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 700; color: var(--text);
+  }
+  .menu-stat-lbl {
+    font-size: 9px; letter-spacing: 2px;
+    color: var(--muted); text-transform: uppercase;
+  }
+
+  .menu-logout {
+    margin-top: auto;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; letter-spacing: 2px;
+    color: var(--muted); text-transform: uppercase;
+    cursor: pointer; background: none; border: none;
+    padding: 0; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .menu-logout:active { opacity: 0.5; }
+
+  /* VUES SECONDAIRES */
+  .section-view {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    display: none; flex-direction: column;
+    overflow-y: auto; padding: 24px 28px;
+    z-index: 10;
+  }
+  .section-view.visible { display: flex; }
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 4px; color: var(--text);
+    text-transform: uppercase; margin-bottom: 20px;
+  }
+  .section-item {
+    padding: 14px 0;
+    border-bottom: 0.5px solid var(--chain);
+    font-family: 'Playfair Display', serif;
+    font-size: 16px; color: var(--text);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .section-item-sub {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; color: var(--muted); margin-top: 3px;
+  }
+  .section-empty {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; color: var(--muted);
+    font-style: italic; letter-spacing: 0.5px;
+  }
+  .restore-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px; letter-spacing: 1px;
+    color: var(--muted); background: var(--chain);
+    border: none; border-radius: 20px;
+    padding: 4px 10px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .restore-btn:active { opacity: 0.6; }
 </style>
 </head>
 <body>
@@ -402,10 +537,12 @@
 <div class="app">
   <div class="header">
     <div class="logo">FLIK</div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <button onclick="signOut()" style="background:none;border:none;font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:2px;color:#aaa;cursor:pointer;text-transform:uppercase;-webkit-tap-highlight-color:transparent;">Quitter</button>
+    <div style="display:flex;align-items:center;gap:14px;">
       <button class="add-btn" onclick="openModal()" aria-label="Ajouter une tâche">
         <svg viewBox="0 0 16 16"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      </button>
+      <button class="hamburger" onclick="openMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
       </button>
     </div>
   </div>
@@ -443,27 +580,60 @@
       <div class="cleared-sub">pile vidée</div>
     </div>
 
-  </div>
-
-
-
-  <div class="bottom-bar">
-    <div class="nav-item active">
-      <svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-      <span>flux</span>
-    </div>
-    <div class="nav-item">
-      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      <span>fait</span>
-    </div>
-    <div class="nav-item">
-      <div class="nav-badge">
-        <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-        <div class="incubator-count" id="incubatorCount">0</div>
+    <!-- VUES SECONDAIRES -->
+    <div class="section-view" id="viewFait">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button onclick="showSection('flux')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted);display:flex;align-items:center;" aria-label="Retour">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="section-title" style="margin-bottom:0;">Fait</div>
       </div>
-      <span>incubateur</span>
+      <div id="listFait"><p class="section-empty">Aucune tâche accomplie pour l'instant.</p></div>
+    </div>
+
+    <div class="section-view" id="viewSupprimes">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button onclick="showSection('flux')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted);display:flex;align-items:center;" aria-label="Retour">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="section-title" style="margin-bottom:0;">Supprimés</div>
+      </div>
+      <div id="listSupprimes"><p class="section-empty">Aucune tâche supprimée.</p></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MENU OVERLAY + DRAWER -->
+<div class="menu-overlay" id="menuOverlay" onclick="closeMenu()"></div>
+<div class="menu-drawer" id="menuDrawer">
+  <div class="menu-user">
+    <div class="menu-user-name" id="menuUserName">—</div>
+    <div class="menu-user-email" id="menuUserEmail">—</div>
+  </div>
+
+  <div class="menu-item" onclick="showSection('flux')">
+    À faire <span class="count" id="menuCountFlux">0</span>
+  </div>
+  <div class="menu-item" onclick="showSection('fait')">
+    Fait <span class="count" id="menuCountFait">0</span>
+  </div>
+  <div class="menu-item" onclick="showSection('supprimes')">
+    Supprimés <span class="count" id="menuCountSupprimes">0</span>
+  </div>
+
+  <div class="menu-stats" id="menuStats">
+    <div class="menu-stat">
+      <div class="menu-stat-val" id="menuStreak">0</div>
+      <div class="menu-stat-lbl">🔥 Streak</div>
+    </div>
+    <div class="menu-stat">
+      <div class="menu-stat-val" id="menuPoints">0</div>
+      <div class="menu-stat-lbl">⭐ Points</div>
     </div>
   </div>
+
+  <button class="menu-logout" onclick="signOut()">Se déconnecter</button>
 </div>
 
 <!-- ADD MODAL -->
@@ -575,6 +745,9 @@ let queue = [
   { title: "Faire les courses", hasChain: false },
   { title: "Envoyer le mail RH", hasChain: true },
 ];
+
+let doneList = [];
+let deletedList = [];
 
 let removed = null;
 let undoTimer = null;
@@ -722,19 +895,26 @@ function doSwipe(dir, el) {
     playCrumple();
     el.style.transform = 'rotate(-28deg) translate(-600px, 60px)';
     removed = queue.shift();
+    deletedList.unshift({ ...removed, deletedAt: new Date().toISOString() });
     showUndo();
+    updateMenuCounts();
+    autoSave();
   } else if (dir === 'right') {
     playWhoosh();
     el.style.transform = 'rotate(20deg) translate(600px, -40px)';
     const t = queue.shift();
-    // Insert immediately at a random position in the remaining queue (not at front)
     const pos = queue.length === 0 ? 0 : Math.floor(Math.random() * queue.length) + 1;
     queue.splice(pos, 0, t);
     updateCounters();
+    autoSave();
   } else if (dir === 'up') {
     playDing();
     el.style.transform = 'translate(0, -700px) scale(0.8)';
-    queue.shift();
+    const done = queue.shift();
+    doneList.unshift({ ...done, completedAt: new Date().toISOString() });
+    updateMenuCounts();
+    autoSave();
+    saveDone(doneList).catch(() => {});
   }
 
   setTimeout(() => {
@@ -815,6 +995,8 @@ function confirmAdd() {
   if (!val) return;
   queue.push({ title: val, hasChain: chainChecked });
   closeModal();
+  updateMenuCounts();
+  autoSave();
   if (queue.length <= 3) {
     renderStack();
     setTimeout(() => setupDrag(getTopCard()), 700);
@@ -828,20 +1010,131 @@ document.getElementById('addInput').addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
 
+// ── Menu hamburger ────────────────────────────────────────────
+let currentSection = 'flux';
+
+function openMenu() {
+  updateMenuCounts();
+  document.getElementById('menuOverlay').classList.add('visible');
+  document.getElementById('menuDrawer').classList.add('visible');
+}
+
+function closeMenu() {
+  document.getElementById('menuOverlay').classList.remove('visible');
+  document.getElementById('menuDrawer').classList.remove('visible');
+}
+
+function showSection(name) {
+  closeMenu();
+  currentSection = name;
+
+  // Masquer les vues secondaires
+  document.getElementById('viewFait').classList.remove('visible');
+  document.getElementById('viewSupprimes').classList.remove('visible');
+
+  if (name === 'flux') {
+    // Rien à afficher de spécial, la pile est toujours là
+  } else if (name === 'fait') {
+    renderFait();
+    document.getElementById('viewFait').classList.add('visible');
+  } else if (name === 'supprimes') {
+    renderSupprimes();
+    document.getElementById('viewSupprimes').classList.add('visible');
+  }
+}
+
+function renderFait() {
+  const el = document.getElementById('listFait');
+  if (doneList.length === 0) {
+    el.innerHTML = '<p class="section-empty">Aucune tâche accomplie pour l\'instant.</p>';
+    return;
+  }
+  el.innerHTML = doneList.map((t, i) => {
+    const d = t.completedAt ? new Date(t.completedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+    return `<div class="section-item">
+      <div>
+        <div>${escHtml(t.title)}</div>
+        ${d ? `<div class="section-item-sub">${d}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSupprimes() {
+  const el = document.getElementById('listSupprimes');
+  if (deletedList.length === 0) {
+    el.innerHTML = '<p class="section-empty">Aucune tâche supprimée.</p>';
+    return;
+  }
+  el.innerHTML = deletedList.map((t, i) => {
+    const d = t.deletedAt ? new Date(t.deletedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+    return `<div class="section-item">
+      <div>
+        <div>${escHtml(t.title)}</div>
+        ${d ? `<div class="section-item-sub">${d}</div>` : ''}
+      </div>
+      <button class="restore-btn" onclick="restoreDeleted(${i})">Remettre</button>
+    </div>`;
+  }).join('');
+}
+
+function restoreDeleted(idx) {
+  const task = deletedList.splice(idx, 1)[0];
+  if (!task) return;
+  delete task.deletedAt;
+  queue.unshift(task);
+  renderSupprimes();
+  updateMenuCounts();
+  autoSave();
+  // Si la pile était vide, relancer
+  if (queue.length === 1) {
+    document.getElementById('clearedScreen').classList.remove('visible');
+    renderStack();
+    setTimeout(() => setupDrag(getTopCard()), 100);
+  }
+}
+
+function updateMenuCounts() {
+  document.getElementById('menuCountFlux').textContent = queue.length;
+  document.getElementById('menuCountFait').textContent = doneList.length;
+  document.getElementById('menuCountSupprimes').textContent = deletedList.length;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Backup localStorage (secours si offline ou avant login) ──
+const LS_KEY = 'flik_queue_backup';
+
+function saveLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(queue)); } catch(e) {}
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
 // ── Auth + chargement des tâches depuis Supabase ─────────────
 async function init() {
   const session = await guardAuth();
   if (!session) return; // redirigé vers login.html
 
-  // Bouton déconnexion discret dans le header
-  const header = document.querySelector('.header');
-  const logoutBtn = document.createElement('button');
-  logoutBtn.textContent = 'Quitter';
-  logoutBtn.style.cssText = 'background:none;border:none;font-family:"DM Sans",sans-serif;font-size:10px;letter-spacing:2px;color:#aaa;cursor:pointer;text-transform:uppercase;';
-  logoutBtn.onclick = signOut;
-  header.insertBefore(logoutBtn, header.querySelector('.add-btn'));
+  // Remplir les infos utilisateur dans le drawer
+  try {
+    const user = await getUser();
+    if (user) {
+      const name = user.user_metadata?.full_name || user.email?.split('@')[0] || '—';
+      document.getElementById('menuUserName').textContent = name;
+      document.getElementById('menuUserEmail').textContent = user.email || '';
+    }
+  } catch(e) {}
 
-  // Charger les tâches de l'utilisateur
+  // 1. Charger depuis Supabase
+  let loadedFromCloud = false;
   try {
     const saved = await loadTasks();
     if (saved && saved.length > 0) {
@@ -851,17 +1144,34 @@ async function init() {
         hasChain:  r.has_chain,
         chainNote: r.chain_note || '',
       }));
+      loadedFromCloud = true;
+      saveLocal(); // synchroniser le backup local
     }
   } catch(e) {
-    console.warn('Impossible de charger les tâches:', e.message);
+    console.warn('Supabase inaccessible, tentative backup local:', e.message);
   }
 
+  // 2. Si Supabase vide ou inaccessible → tenter le backup localStorage
+  if (!loadedFromCloud) {
+    const local = loadLocal();
+    if (local && local.length > 0) {
+      queue = local;
+      // Uploader vers Supabase maintenant qu'on est connecté
+      saveTasks(queue).catch(() => {});
+    } else {
+      // Aucune tâche sauvegardée → vider les tâches de démo
+      queue = [];
+    }
+  }
+
+  updateMenuCounts();
   renderStack();
   setTimeout(() => setupDrag(getTopCard()), 100);
 }
 
-// Sauvegarder automatiquement après chaque action
+// Sauvegarder automatiquement après chaque action (Supabase + localStorage)
 function autoSave() {
+  saveLocal();
   saveTasks(queue).catch(() => {});
 }
 
