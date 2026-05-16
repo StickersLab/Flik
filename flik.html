@@ -1104,6 +1104,20 @@ function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Backup localStorage (secours si offline ou avant login) ──
+const LS_KEY = 'flik_queue_backup';
+
+function saveLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(queue)); } catch(e) {}
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
 // ── Auth + chargement des tâches depuis Supabase ─────────────
 async function init() {
   const session = await guardAuth();
@@ -1119,7 +1133,8 @@ async function init() {
     }
   } catch(e) {}
 
-  // Charger les tâches de l'utilisateur
+  // 1. Charger depuis Supabase
+  let loadedFromCloud = false;
   try {
     const saved = await loadTasks();
     if (saved && saved.length > 0) {
@@ -1129,9 +1144,24 @@ async function init() {
         hasChain:  r.has_chain,
         chainNote: r.chain_note || '',
       }));
+      loadedFromCloud = true;
+      saveLocal(); // synchroniser le backup local
     }
   } catch(e) {
-    console.warn('Impossible de charger les tâches:', e.message);
+    console.warn('Supabase inaccessible, tentative backup local:', e.message);
+  }
+
+  // 2. Si Supabase vide ou inaccessible → tenter le backup localStorage
+  if (!loadedFromCloud) {
+    const local = loadLocal();
+    if (local && local.length > 0) {
+      queue = local;
+      // Uploader vers Supabase maintenant qu'on est connecté
+      saveTasks(queue).catch(() => {});
+    } else {
+      // Aucune tâche sauvegardée → vider les tâches de démo
+      queue = [];
+    }
   }
 
   updateMenuCounts();
@@ -1139,8 +1169,9 @@ async function init() {
   setTimeout(() => setupDrag(getTopCard()), 100);
 }
 
-// Sauvegarder automatiquement après chaque action
+// Sauvegarder automatiquement après chaque action (Supabase + localStorage)
 function autoSave() {
+  saveLocal();
   saveTasks(queue).catch(() => {});
 }
 
