@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>FLIK</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700;900&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -823,8 +825,44 @@ document.getElementById('addInput').addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
 
-renderStack();
-setTimeout(() => setupDrag(getTopCard()), 100);
+// ── Auth + chargement des tâches depuis Supabase ─────────────
+async function init() {
+  const session = await guardAuth();
+  if (!session) return; // redirigé vers login.html
+
+  // Bouton déconnexion discret dans le header
+  const header = document.querySelector('.header');
+  const logoutBtn = document.createElement('button');
+  logoutBtn.textContent = 'Quitter';
+  logoutBtn.style.cssText = 'background:none;border:none;font-family:"DM Sans",sans-serif;font-size:10px;letter-spacing:2px;color:#aaa;cursor:pointer;text-transform:uppercase;';
+  logoutBtn.onclick = signOut;
+  header.insertBefore(logoutBtn, header.querySelector('.add-btn'));
+
+  // Charger les tâches de l'utilisateur
+  try {
+    const saved = await loadTasks();
+    if (saved && saved.length > 0) {
+      queue = saved.map(r => ({
+        id:        r.task_id || String(r.id),
+        title:     r.title,
+        hasChain:  r.has_chain,
+        chainNote: r.chain_note || '',
+      }));
+    }
+  } catch(e) {
+    console.warn('Impossible de charger les tâches:', e.message);
+  }
+
+  renderStack();
+  setTimeout(() => setupDrag(getTopCard()), 100);
+}
+
+// Sauvegarder automatiquement après chaque action
+function autoSave() {
+  saveTasks(queue).catch(() => {});
+}
+
+init();
 </script>
 </body>
 </html>
