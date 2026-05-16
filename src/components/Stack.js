@@ -2,13 +2,10 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Animated as RNAnimated } from 'react-native';
 import { TopCard, BackCard } from './Card';
 
-export function Stack({ queue, onSwipe }) {
+export function Stack({ queue, onSwipe, undoEntry }) {
   const visible = queue.slice(0, 3);
-  const isEmpty = queue.length === 0;
+  if (queue.length === 0) return null;
 
-  if (isEmpty) return null;
-
-  // Render back cards first (behind), top card last (in front)
   return (
     <View style={styles.stack}>
       {visible.length > 2 && (
@@ -17,7 +14,12 @@ export function Stack({ queue, onSwipe }) {
       {visible.length > 1 && (
         <BackCard key={`back-1-${visible[1].id}`} depth={1} />
       )}
-      <TopCard key={`top-${visible[0].id}`} task={visible[0]} onSwipe={onSwipe} />
+      <TopCard
+        key={`top-${visible[0].id}`}
+        task={visible[0]}
+        onSwipe={onSwipe}
+        entryFrom={undoEntry ? 'left' : 'none'}
+      />
     </View>
   );
 }

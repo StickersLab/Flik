@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -20,9 +20,17 @@ function getFontSize(title) {
   return 17;
 }
 
-export function TopCard({ task, onSwipe }) {
-  const tx = useSharedValue(0);
+export function TopCard({ task, onSwipe, entryFrom = 'none' }) {
+  const tx = useSharedValue(entryFrom === 'left' ? -750 : 0);
   const ty = useSharedValue(0);
+  const scale = useSharedValue(entryFrom === 'none' ? 1 : 0.92);
+
+  useEffect(() => {
+    if (entryFrom === 'left') {
+      tx.value = withSpring(0, { damping: 18, stiffness: 120 });
+      scale.value = withSpring(1, { damping: 18 });
+    }
+  }, []);
 
   const pan = Gesture.Pan()
     .onUpdate((e) => {
@@ -31,16 +39,19 @@ export function TopCard({ task, onSwipe }) {
     })
     .onEnd((e) => {
       if (e.translationX < -SWIPE_X) {
-        tx.value = withTiming(-700, { duration: 350 });
-        ty.value = withTiming(60, { duration: 350 });
-        runOnJS(onSwipe)('left');
+        tx.value = withTiming(-750, { duration: 320 }, (done) => {
+          if (done) runOnJS(onSwipe)('left');
+        });
+        ty.value = withTiming(60, { duration: 320 });
       } else if (e.translationX > SWIPE_X) {
-        tx.value = withTiming(700, { duration: 350 });
-        ty.value = withTiming(-40, { duration: 350 });
-        runOnJS(onSwipe)('right');
+        tx.value = withTiming(750, { duration: 320 }, (done) => {
+          if (done) runOnJS(onSwipe)('right');
+        });
+        ty.value = withTiming(-40, { duration: 320 });
       } else if (e.translationY < -SWIPE_Y) {
-        ty.value = withTiming(-700, { duration: 350 });
-        runOnJS(onSwipe)('up');
+        ty.value = withTiming(-750, { duration: 320 }, (done) => {
+          if (done) runOnJS(onSwipe)('up');
+        });
       } else {
         tx.value = withSpring(0, { damping: 15 });
         ty.value = withSpring(0, { damping: 15 });
@@ -54,6 +65,7 @@ export function TopCard({ task, onSwipe }) {
         { translateX: tx.value },
         { translateY: ty.value },
         { rotate: `${rotate}deg` },
+        { scale: scale.value },
       ],
     };
   });
@@ -61,6 +73,7 @@ export function TopCard({ task, onSwipe }) {
   return (
     <GestureDetector gesture={pan}>
       <Animated.View style={[styles.card, styles.cardFront, animStyle]}>
+        <Text style={styles.watermark}>F</Text>
         <CardContent task={task} />
       </Animated.View>
     </GestureDetector>
@@ -69,15 +82,9 @@ export function TopCard({ task, onSwipe }) {
 
 export function BackCard({ depth }) {
   const offset = depth * 9;
-  const scale = 1 - depth * 0.05;
+  const sc = 1 - depth * 0.05;
   return (
-    <View
-      style={[
-        styles.card,
-        styles.cardBack,
-        { transform: [{ translateY: offset }, { scale }] },
-      ]}
-    >
+    <View style={[styles.card, styles.cardBack, { transform: [{ translateY: offset }, { scale: sc }] }]}>
       <Text style={styles.backLogo}>FLIK</Text>
     </View>
   );
@@ -93,7 +100,9 @@ function CardContent({ task }) {
       <View style={styles.bottom}>
         {task.hasChain && (
           <View style={styles.chainBadge}>
-            <Text style={styles.chainText}>⛓ action</Text>
+            <Text style={styles.chainText}>
+              ⛓ {task.chainNote ? task.chainNote : 'action requise'}
+            </Text>
           </View>
         )}
       </View>
@@ -115,8 +124,9 @@ const styles = StyleSheet.create({
     padding: 36,
     justifyContent: 'space-between',
     zIndex: 10,
+    overflow: 'hidden',
     ...Platform.select({
-      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.08)' },
+      web: { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
       default: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -132,6 +142,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1,
   },
+  watermark: {
+    position: 'absolute',
+    fontFamily: 'PlayfairDisplay_900Black',
+    fontSize: 180,
+    color: 'rgba(0,0,0,0.035)',
+    alignSelf: 'center',
+    top: 60,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    pointerEvents: 'none',
+  },
   backLogo: {
     fontFamily: 'PlayfairDisplay_900Black',
     fontSize: 28,
@@ -144,23 +166,26 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     color: '#aaa',
     textTransform: 'uppercase',
+    zIndex: 1,
   },
   title: {
     fontFamily: 'PlayfairDisplay_500Medium',
     color: '#1a1a1a',
     lineHeight: 32,
     flex: 1,
-    textAlignVertical: 'center',
     paddingTop: 8,
+    zIndex: 1,
   },
   bottom: {
     alignItems: 'flex-end',
+    zIndex: 1,
   },
   chainBadge: {
     backgroundColor: '#e8e2d6',
     borderRadius: 30,
     paddingVertical: 5,
     paddingHorizontal: 12,
+    maxWidth: 220,
   },
   chainText: {
     fontFamily: 'DMSans_400Regular',

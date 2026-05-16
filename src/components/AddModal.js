@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -13,30 +13,27 @@ import {
 export function AddModal({ visible, onClose, onAdd }) {
   const [title, setTitle] = useState('');
   const [hasChain, setHasChain] = useState(false);
-  const inputRef = useRef(null);
+  const [chainNote, setChainNote] = useState('');
 
   function handleAdd() {
     const trimmed = title.trim();
     if (!trimmed) return;
-    onAdd({ title: trimmed, hasChain });
+    onAdd({ title: trimmed, hasChain, chainNote: hasChain ? chainNote.trim() : '' });
     setTitle('');
     setHasChain(false);
+    setChainNote('');
     onClose();
   }
 
   function handleClose() {
     setTitle('');
     setHasChain(false);
+    setChainNote('');
     onClose();
   }
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -45,7 +42,6 @@ export function AddModal({ visible, onClose, onAdd }) {
           <Text style={styles.modalTitle}>NOUVELLE TÂCHE</Text>
 
           <TextInput
-            ref={inputRef}
             style={styles.input}
             value={title}
             onChangeText={setTitle}
@@ -57,6 +53,7 @@ export function AddModal({ visible, onClose, onAdd }) {
             autoFocus
           />
 
+          {/* Toggle action requise */}
           <TouchableOpacity
             style={styles.chainToggle}
             onPress={() => setHasChain((v) => !v)}
@@ -68,19 +65,24 @@ export function AddModal({ visible, onClose, onAdd }) {
             <Text style={styles.chainLabel}>action requise avant</Text>
           </TouchableOpacity>
 
+          {/* Champ prérequis visible seulement si cochée */}
+          {hasChain && (
+            <TextInput
+              style={[styles.input, styles.chainInput]}
+              value={chainNote}
+              onChangeText={setChainNote}
+              placeholder="que faut-il faire en premier ?"
+              placeholderTextColor="#bbb"
+              maxLength={80}
+              returnKeyType="done"
+            />
+          )}
+
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.btn, styles.btnCancel]}
-              onPress={handleClose}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={[styles.btn, styles.btnCancel]} onPress={handleClose} activeOpacity={0.7}>
               <Text style={[styles.btnText, styles.btnTextCancel]}>ANNULER</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.btn, styles.btnConfirm]}
-              onPress={handleAdd}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={[styles.btn, styles.btnConfirm]} onPress={handleAdd} activeOpacity={0.7}>
               <Text style={[styles.btnText, styles.btnTextConfirm]}>AJOUTER</Text>
             </TouchableOpacity>
           </View>
@@ -98,10 +100,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 40,
   },
-  content: {
-    width: '100%',
-    gap: 20,
-  },
+  content: { width: '100%', gap: 20 },
   modalTitle: {
     fontFamily: 'PlayfairDisplay_700Bold',
     fontSize: 22,
@@ -117,6 +116,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     letterSpacing: 1,
   },
+  chainInput: {
+    fontSize: 15,
+    borderBottomColor: '#c8b89a',
+    marginTop: -8,
+  },
   chainToggle: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -131,15 +135,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxChecked: {
-    backgroundColor: '#1a1a1a',
-    borderColor: '#1a1a1a',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 12,
-    lineHeight: 14,
-  },
+  checkboxChecked: { backgroundColor: '#1a1a1a', borderColor: '#1a1a1a' },
+  checkmark: { color: '#fff', fontSize: 12, lineHeight: 14 },
   chainLabel: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 11,
@@ -147,11 +144,7 @@ const styles = StyleSheet.create({
     color: '#aaa',
     textTransform: 'uppercase',
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 4 },
   btn: {
     flex: 1,
     paddingVertical: 14,
@@ -160,21 +153,13 @@ const styles = StyleSheet.create({
     borderColor: '#1a1a1a',
     alignItems: 'center',
   },
-  btnCancel: {
-    backgroundColor: 'transparent',
-  },
-  btnConfirm: {
-    backgroundColor: '#1a1a1a',
-  },
+  btnCancel: { backgroundColor: 'transparent' },
+  btnConfirm: { backgroundColor: '#1a1a1a' },
   btnText: {
     fontFamily: 'PlayfairDisplay_400Regular',
     fontSize: 13,
     letterSpacing: 3,
   },
-  btnTextCancel: {
-    color: '#1a1a1a',
-  },
-  btnTextConfirm: {
-    color: '#f5f3ee',
-  },
+  btnTextCancel: { color: '#1a1a1a' },
+  btnTextConfirm: { color: '#f5f3ee' },
 });
