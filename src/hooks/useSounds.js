@@ -1,58 +1,72 @@
 import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
+import { getSoundSet, resumeAudio } from '../sounds/webAudioThemes';
 
-// Place MP3 files in assets/sounds/:
-//   crumple.mp3  — papier froissé (swipe gauche)
-//   whoosh.mp3   — air (swipe droite)
-//   ding.mp3     — validation (swipe haut)
+// On web: Web Audio API synthesis (theme-specific)
+// On native: expo-av with MP3 files (same for all themes)
 
-export function useSounds() {
-  const sounds = useRef({});
+export function useSounds(soundsEnabled = true) {
+  const nativeSounds = useRef({});
+  const soundSetRef  = useRef('naturel');
 
   useEffect(() => {
-    let mounted = true;
+    if (Platform.OS === 'web') return; // web uses WebAudio, no setup needed
 
+    let mounted = true;
     async function load() {
       try {
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-
         const assets = {
           crumple: require('../../assets/sounds/crumple.mp3'),
-          whoosh: require('../../assets/sounds/whoosh.mp3'),
-          ding: require('../../assets/sounds/ding.mp3'),
+          whoosh:  require('../../assets/sounds/whoosh.mp3'),
+          ding:    require('../../assets/sounds/ding.mp3'),
         };
-
         for (const [key, source] of Object.entries(assets)) {
           const { sound } = await Audio.Sound.createAsync(source);
-          if (mounted) sounds.current[key] = sound;
+          if (mounted) nativeSounds.current[key] = sound;
         }
-      } catch {
-        // Sounds unavailable — app works without them
-      }
+      } catch { /* sounds unavailable */ }
     }
-
     load();
-
     return () => {
       mounted = false;
-      Object.values(sounds.current).forEach((s) => s?.unloadAsync());
+      Object.values(nativeSounds.current).forEach((s) => s?.unloadAsync());
     };
   }, []);
 
-  async function play(name) {
+  function setSoundTheme(soundSetId) {
+    soundSetRef.current = soundSetId;
+  }
+
+  async function playNative(name) {
     try {
-      const sound = sounds.current[name];
+      const sound = nativeSounds.current[name];
       if (!sound) return;
       await sound.setPositionAsync(0);
       await sound.playAsync();
-    } catch {
-      // Ignore playback errors
+    } catch { /* ignore */ }
+  }
+
+  function playWeb(name) {
+    resumeAudio();
+    const set = getSoundSet(soundSetRef.current);
+    set[name]?.();
+  }
+
+  function play(name) {
+    if (!soundsEnabled) return;
+    if (Platform.OS === 'web') {
+      playWeb(name);
+    } else {
+      playNative(name);
     }
   }
 
   return {
-    playCrumple: () => play('crumple'),
-    playWhoosh: () => play('whoosh'),
-    playDing: () => play('ding'),
+    playCrumple:    () => play('crumple'),
+    playWhoosh:     () => play('whoosh'),
+    playDing:       () => play('ding'),
+    setSoundTheme,
   };
 }

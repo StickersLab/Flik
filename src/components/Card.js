@@ -14,13 +14,18 @@ import Animated, {
 const SWIPE_X = 80;
 const SWIPE_Y = 80;
 
+const DEFAULT_THEME_COLORS = {
+  card: '#ffffff', cardBack: '#111111', text: '#1a1a1a',
+  muted: '#aaa', chain: '#e8e2d6',
+};
+
 function getFontSize(title) {
   if (title.length < 18) return 26;
   if (title.length < 35) return 21;
   return 17;
 }
 
-export function TopCard({ task, onSwipe, entryFrom = 'none' }) {
+export function TopCard({ task, onSwipe, entryFrom = 'none', theme }) {
   const tx = useSharedValue(entryFrom === 'left' ? -750 : 0);
   const ty = useSharedValue(0);
   const scale = useSharedValue(entryFrom === 'none' ? 1 : 0.92);
@@ -70,37 +75,46 @@ export function TopCard({ task, onSwipe, entryFrom = 'none' }) {
     };
   });
 
+  const th = theme || DEFAULT_THEME_COLORS;
   return (
     <GestureDetector gesture={pan}>
-      <Animated.View style={[styles.card, styles.cardFront, animStyle]}>
-        <Text style={styles.watermark}>F</Text>
-        <CardContent task={task} />
+      <Animated.View style={[styles.card, styles.cardFront, {
+        backgroundColor: th.card,
+        borderColor: th.chain,
+        ...Platform.select({
+          web: { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
+          default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 5 },
+        }),
+      }, animStyle]}>
+        <Text style={[styles.watermark, { color: `${th.text}08` }]}>F</Text>
+        <CardContent task={task} theme={th} />
       </Animated.View>
     </GestureDetector>
   );
 }
 
-export function BackCard({ depth }) {
+export function BackCard({ depth, theme }) {
+  const th = theme || DEFAULT_THEME_COLORS;
   const offset = depth * 9;
   const sc = 1 - depth * 0.05;
   return (
-    <View style={[styles.card, styles.cardBack, { transform: [{ translateY: offset }, { scale: sc }] }]}>
-      <Text style={styles.backLogo}>FLIK</Text>
+    <View style={[styles.card, { backgroundColor: th.cardBack, transform: [{ translateY: offset }, { scale: sc }] }]}>
+      <Text style={[styles.backLogo, { color: `${th.card}40` }]}>FLIK</Text>
     </View>
   );
 }
 
-function CardContent({ task }) {
+function CardContent({ task, theme: th }) {
   return (
     <>
-      <Text style={styles.label}>tâche</Text>
-      <Text style={[styles.title, { fontSize: getFontSize(task.title) }]}>
+      <Text style={[styles.label, { color: th.muted }]}>tâche</Text>
+      <Text style={[styles.title, { fontSize: getFontSize(task.title), color: th.text }]}>
         {task.title}
       </Text>
       <View style={styles.bottom}>
         {task.hasChain && (
-          <View style={styles.chainBadge}>
-            <Text style={styles.chainText}>
+          <View style={[styles.chainBadge, { backgroundColor: th.chain }]}>
+            <Text style={[styles.chainText, { color: th.muted }]}>
               ⛓ {task.chainNote ? task.chainNote : 'action requise'}
             </Text>
           </View>
@@ -118,26 +132,13 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   cardFront: {
-    backgroundColor: '#ffffff',
     borderWidth: 0.5,
-    borderColor: '#e0ddd6',
     padding: 36,
     justifyContent: 'space-between',
     zIndex: 10,
     overflow: 'hidden',
-    ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 5,
-      },
-    }),
   },
   cardBack: {
-    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Animated, SafeAreaView, StatusBar, Platform,
+  Animated, SafeAreaView, StatusBar, Platform, ScrollView,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -13,21 +13,22 @@ import {
 } from '@expo-google-fonts/playfair-display';
 import { DMSans_300Light, DMSans_400Regular } from '@expo-google-fonts/dm-sans';
 
-import { Stack, ClearedScreen } from './src/components/Stack';
-import { BottomBar }            from './src/components/BottomBar';
-import { AddModal }             from './src/components/AddModal';
-import { RewardAnimation }      from './src/components/RewardAnimation';
-import { useSounds }            from './src/hooks/useSounds';
-import { useStorage }           from './src/hooks/useStorage';
-import { initialTasks }         from './src/data/initialTasks';
-import { getLevel }             from './src/data/levels';
+import { Stack, ClearedScreen }  from './src/components/Stack';
+import { BottomBar }             from './src/components/BottomBar';
+import { AddModal }              from './src/components/AddModal';
+import { RewardAnimation }       from './src/components/RewardAnimation';
+import { MenuDrawer }            from './src/components/MenuDrawer';
+import { ThemeShop }             from './src/components/ThemeShop';
+import { useSounds }             from './src/hooks/useSounds';
+import { useStorage }            from './src/hooks/useStorage';
+import { initialTasks }          from './src/data/initialTasks';
+import { getLevel }              from './src/data/levels';
+import { getTheme }              from './src/data/themes';
+import { t }                     from './src/i18n/strings';
 
 let _nextId = 100;
 function nextId() { return String(++_nextId); }
 
-const POINTS_PER_TASK = 10;
-
-// undoAction : { task, direction, insertedAt? }
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     PlayfairDisplay_400Regular,
@@ -38,38 +39,56 @@ export default function App() {
     DMSans_400Regular,
   });
 
+  const storage = useStorage(initialTasks);
   const {
-    queue, setQueue, doneList, setDoneList,
-    points, streak, streakPtsToday,
-    addPoints, loaded,
-  } = useStorage(initialTasks);
+    queue, setQueue,
+    doneList, setDoneList,
+    incubatorList, setIncubatorList,
+    points, credits, streak, bestStreak,
+    streakPtsToday, streakCrToday,
+    purchasedThemes, currentThemeId,
+    deletedCount, dailyDone,
+    soundsEnabled, language,
+    loaded,
+    validateTask, incrementDeleted,
+    unlockTheme, updateTheme,
+    updateSoundsEnabled, updateLanguage,
+  } = storage;
 
-  const [undoAction, setUndoAction] = useState(null); // { task, direction, insertedAt }
-  const [activeTab,  setActiveTab]  = useState('flux');
-  const [showModal,  setShowModal]  = useState(false);
-  const [undoEntry,  setUndoEntry]  = useState(false);
+  const theme = getTheme(currentThemeId);
+  const lang  = language;
 
-  // Animations récompense
+  const { playCrumple, playWhoosh, playDing, setSoundTheme } = useSounds(soundsEnabled);
+
+  // Keep sound theme in sync
+  useEffect(() => {
+    if (loaded) setSoundTheme(theme.soundSet);
+  }, [currentThemeId, loaded]);
+
+  const [undoAction,  setUndoAction]  = useState(null);
+  const [activeTab,   setActiveTab]   = useState('flux');
+  const [showModal,   setShowModal]   = useState(false);
+  const [undoEntry,   setUndoEntry]   = useState(false);
+  const [showMenu,    setShowMenu]    = useState(false);
+  const [menuSection, setMenuSection] = useState(null);
+  const [showShop,    setShowShop]    = useState(false);
+
   const [reward, setReward] = useState({ visible: false, type: 'task', pts: 0, levelName: '' });
 
-  // Toast undo
-  const undoOpacity   = useRef(new Animated.Value(0)).current;
+  const undoOpacity    = useRef(new Animated.Value(0)).current;
   const undoTranslateY = useRef(new Animated.Value(10)).current;
-  const undoTimer     = useRef(null);
-  const prevLevelRef  = useRef(null);
+  const undoTimer      = useRef(null);
+  const prevLevelRef   = useRef(null);
 
-  const { playCrumple, playWhoosh, playDing } = useSounds();
-
-  // Afficher le bonus de streak à l'ouverture
+  // Streak bonus reward on open
   useEffect(() => {
-    if (!loaded || streakPtsToday === 0) return;
+    if (!loaded || (streakPtsToday === 0 && streakCrToday === 0)) return;
     const timer = setTimeout(() => {
       setReward({ visible: true, type: 'streak', pts: streakPtsToday, levelName: '' });
     }, 800);
     return () => clearTimeout(timer);
   }, [loaded]);
 
-  // Initialiser le niveau de référence
   useEffect(() => {
     if (loaded) prevLevelRef.current = getLevel(points).level;
   }, [loaded]);
@@ -111,6 +130,7 @@ export default function App() {
 
       if (direction === 'left') {
         playCrumple();
+        incrementDeleted();
         setUndoAction({ task: top, direction: 'left' });
         showUndoToast();
         return rest;
@@ -118,21 +138,21 @@ export default function App() {
 
       if (direction === 'right') {
         playWhoosh();
-        const pos = Math.max(1, Math.floor(Math.random() * (rest.length || 1)) + 1);
-        const next = [...rest];
-        next.splice(pos, 0, top);
-        setUndoAction({ task: top, direction: 'right', insertedAt: pos });
+        // Right swipe → incubateur
+        setIncubatorList((inc) => [...inc, { ...top, incubatedAt: new Date().toISOString() }]);
+        setUndoAction({ task: top, direction: 'right' });
         showUndoToast();
-        return next;
+        return rest;
       }
 
       if (direction === 'up') {
         playDing();
         setDoneList((done) => [{ ...top, completedAt: new Date().toISOString() }, ...done]);
-        const newPts = points + POINTS_PER_TASK;
-        addPoints(POINTS_PER_TASK);
-        setReward({ visible: true, type: 'task', pts: POINTS_PER_TASK, levelName: '' });
-        checkLevelUp(newPts);
+        const earned = validateTask();
+        if (earned > 0) {
+          setReward({ visible: true, type: 'task', pts: earned, levelName: '' });
+          checkLevelUp(points + earned);
+        }
         return rest;
       }
 
@@ -145,19 +165,14 @@ export default function App() {
     hideUndoToast();
 
     if (undoAction.direction === 'left') {
-      // Remettre en tête de pile depuis la gauche
       setUndoEntry(true);
       setQueue((prev) => [undoAction.task, ...prev]);
       setTimeout(() => setUndoEntry(false), 50);
     } else if (undoAction.direction === 'right') {
-      // Retrouver la carte dans la pile et la remettre en tête
+      // Remove from incubateur, put back in flux
+      setIncubatorList((inc) => inc.filter((t) => t.id !== undoAction.task.id));
       setUndoEntry(false);
-      setQueue((prev) => {
-        const q = [...prev];
-        const idx = q.findIndex((t) => t.id === undoAction.task.id);
-        if (idx > -1) q.splice(idx, 1);
-        return [undoAction.task, ...q];
-      });
+      setQueue((prev) => [undoAction.task, ...prev]);
     }
   }
 
@@ -165,7 +180,28 @@ export default function App() {
     setQueue((prev) => [...prev, { ...task, id: nextId() }]);
   }
 
-  const undoMessage = undoAction?.direction === 'right' ? 'remise en pile' : 'supprimée';
+  function restoreFromIncubator(taskId) {
+    setIncubatorList((inc) => inc.filter((t) => t.id !== taskId));
+    const task = incubatorList.find((t) => t.id === taskId);
+    if (task) {
+      const { incubatedAt: _, ...clean } = task;
+      setQueue((prev) => [clean, ...prev]);
+    }
+  }
+
+  // ── Menu handlers ─────────────────────────────────────────
+  function openMenu() {
+    setMenuSection(null);
+    setShowMenu(true);
+  }
+
+  function handleUnlockTheme(themeId, cost) {
+    const ok = unlockTheme(themeId, cost);
+    if (ok) setReward({ visible: true, type: 'task', pts: 0, levelName: '' });
+    return ok;
+  }
+
+  const undoMessage = undoAction?.direction === 'right' ? t(lang, 'remiseEnPile') : t(lang, 'supprimee');
 
   if ((!fontsLoaded && !fontError) || !loaded) return null;
 
@@ -173,24 +209,55 @@ export default function App() {
     <GestureHandlerRootView
       style={{ flex: 1, ...(Platform.OS === 'web' && { height: '100vh' }) }}
     >
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.app}>
+      <StatusBar barStyle={theme.text === '#1a1a1a' ? 'dark-content' : 'light-content'} />
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+        <View style={[styles.app, { backgroundColor: theme.bg }]}>
 
-          {/* Header */}
+          {/* ── Header ───────────────────────────────────────── */}
           <View style={styles.header}>
-            <Text style={styles.logo}>FLIK</Text>
-            <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)} activeOpacity={0.85}>
-              <Text style={styles.addBtnText}>+</Text>
+            {/* Hamburger */}
+            <TouchableOpacity onPress={openMenu} activeOpacity={0.7} style={styles.hamburger}>
+              <View style={[styles.hLine, { backgroundColor: theme.text }]} />
+              <View style={[styles.hLine, { backgroundColor: theme.text }]} />
+              <View style={[styles.hLine, { backgroundColor: theme.text }]} />
             </TouchableOpacity>
+
+            {/* Logo */}
+            <Text style={[styles.logo, { color: theme.text }]}>FLIK</Text>
+
+            {/* Stats */}
+            <View style={styles.headerStats}>
+              {streak > 0 && (
+                <View style={styles.statChip}>
+                  <Text style={styles.statEmoji}>🔥</Text>
+                  <Text style={[styles.statVal, { color: theme.text }]}>{t(lang, 'streak', streak)}</Text>
+                </View>
+              )}
+              <View style={styles.statChip}>
+                <Text style={styles.statEmoji}>⭐</Text>
+                <Text style={[styles.statVal, { color: theme.text }]}>{points}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.statChip, styles.creditChip, { backgroundColor: theme.chain }]}
+                onPress={() => { setShowMenu(true); setMenuSection('themes'); }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.statEmoji}>🪙</Text>
+                <Text style={[styles.statVal, { color: theme.text }]}>{credits}</Text>
+              </TouchableOpacity>
+              {/* Add button */}
+              <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.text }]} onPress={() => setShowModal(true)} activeOpacity={0.85}>
+                <Text style={[styles.addBtnText, { color: theme.bg }]}>+</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Arena */}
+          {/* ── Arena ────────────────────────────────────────── */}
           <View style={styles.arena}>
             {activeTab === 'flux' && (
               <>
-                <Stack queue={queue} onSwipe={handleSwipe} undoEntry={undoEntry} />
-                <ClearedScreen visible={queue.length === 0} />
+                <Stack queue={queue} onSwipe={handleSwipe} undoEntry={undoEntry} theme={theme} />
+                <ClearedScreen visible={queue.length === 0} theme={theme} />
 
                 <RewardAnimation
                   visible={reward.visible}
@@ -201,39 +268,34 @@ export default function App() {
                 />
 
                 <View style={styles.counterArea}>
-                  <Text style={styles.counterNum}>{queue.length}</Text>
-                  <Text style={styles.counterLbl}>restantes</Text>
+                  <Text style={[styles.counterNum, { color: theme.text }]}>{queue.length}</Text>
+                  <Text style={[styles.counterLbl, { color: theme.muted }]}>{t(lang, 'restantes')}</Text>
                 </View>
 
-                {/* Toast undo */}
+                {/* Undo toast */}
                 <Animated.View
-                  style={[styles.undoToast, { opacity: undoOpacity, transform: [{ translateY: undoTranslateY }] }]}
+                  style={[styles.undoToast, { backgroundColor: theme.text, opacity: undoOpacity, transform: [{ translateY: undoTranslateY }] }]}
                   pointerEvents="box-none"
                 >
-                  <Text style={styles.undoText}>{undoMessage}</Text>
+                  <Text style={[styles.undoText, { color: theme.bg }]}>{undoMessage}</Text>
                   <TouchableOpacity onPress={handleUndo} activeOpacity={0.7}>
-                    <Text style={styles.undoBtn}>ANNULER</Text>
+                    <Text style={[styles.undoBtn, { color: '#f0c040' }]}>{t(lang, 'annuler')}</Text>
                   </TouchableOpacity>
                 </Animated.View>
               </>
             )}
 
             {activeTab === 'fait' && (
-              <View style={styles.listContainer}>
-                <Text style={styles.listTitle}>FAIT</Text>
-                {doneList.length === 0 ? (
-                  <Text style={styles.listEmpty}>aucune tâche accomplie</Text>
-                ) : (
-                  doneList.map((t) => (
-                    <View key={t.id + (t.completedAt || '')} style={styles.listItem}>
-                      <Text style={styles.listItemText}>{t.title}</Text>
-                      {t.chainNote ? (
-                        <Text style={styles.listItemNote}>↳ {t.chainNote}</Text>
-                      ) : null}
-                    </View>
-                  ))
-                )}
-              </View>
+              <DoneList doneList={doneList} theme={theme} lang={lang} />
+            )}
+
+            {activeTab === 'incubateur' && (
+              <IncubateurList
+                list={incubatorList}
+                onRestore={restoreFromIncubator}
+                theme={theme}
+                lang={lang}
+              />
             )}
           </View>
 
@@ -241,45 +303,142 @@ export default function App() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             doneCount={doneList.length}
-            streak={streak}
+            incubatorCount={incubatorList.length}
             points={points}
+            theme={theme}
+            lang={lang}
           />
         </View>
       </SafeAreaView>
 
       <AddModal visible={showModal} onClose={() => setShowModal(false)} onAdd={handleAdd} />
+
+      {showMenu && (
+        <MenuDrawer
+          visible={showMenu}
+          onClose={() => { setShowMenu(false); setMenuSection(null); }}
+          section={menuSection}
+          onSection={setMenuSection}
+          theme={theme}
+          lang={lang}
+          userName=""
+          userEmail=""
+          streak={streak}
+          points={points}
+          credits={credits}
+          doneCount={doneList.length}
+          deletedCount={deletedCount}
+          incubatorCount={incubatorList.length}
+          bestStreak={bestStreak}
+          dailyDone={dailyDone}
+          soundsEnabled={soundsEnabled}
+          onToggleSounds={updateSoundsEnabled}
+          onLanguage={updateLanguage}
+          onOpenShop={() => { setShowMenu(false); setShowShop(true); }}
+          onSignOut={() => {}}
+        />
+      )}
+
+      {showShop && (
+        <ThemeShop
+          visible={showShop}
+          onClose={() => setShowShop(false)}
+          currentTheme={theme}
+          purchasedThemes={purchasedThemes}
+          credits={credits}
+          onUnlock={handleUnlockTheme}
+          onApply={updateTheme}
+          lang={lang}
+        />
+      )}
     </GestureHandlerRootView>
   );
 }
 
+// ── Tab lists ─────────────────────────────────────────────────
+function DoneList({ doneList, theme, lang }) {
+  return (
+    <ScrollView style={styles.listContainer} contentContainerStyle={styles.listContent}>
+      <Text style={[styles.listTitle, { color: theme.text }]}>{t(lang, 'fait').toUpperCase()}</Text>
+      {doneList.length === 0 ? (
+        <Text style={[styles.listEmpty, { color: theme.muted }]}>{t(lang, 'aucuneTacheFaite')}</Text>
+      ) : doneList.map((task) => (
+        <View key={task.id + (task.completedAt || '')} style={[styles.listItem, { borderBottomColor: theme.chain }]}>
+          <Text style={[styles.listItemText, { color: theme.text }]}>{task.title}</Text>
+          {task.chainNote ? <Text style={[styles.listItemNote, { color: theme.muted }]}>↳ {task.chainNote}</Text> : null}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+function IncubateurList({ list, onRestore, theme, lang }) {
+  return (
+    <ScrollView style={styles.listContainer} contentContainerStyle={styles.listContent}>
+      <Text style={[styles.listTitle, { color: theme.text }]}>{t(lang, 'incubateur').toUpperCase()}</Text>
+      {list.length === 0 ? (
+        <Text style={[styles.listEmpty, { color: theme.muted }]}>{t(lang, 'aucuneTacheIncubateur')}</Text>
+      ) : list.map((task) => (
+        <View key={task.id} style={[styles.listItem, { borderBottomColor: theme.chain }]}>
+          <Text style={[styles.listItemText, { color: theme.text, flex: 1 }]}>{task.title}</Text>
+          <TouchableOpacity
+            style={[styles.restoreBtn, { backgroundColor: theme.chain }]}
+            onPress={() => onRestore(task.id)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.restoreBtnText, { color: theme.muted }]}>{t(lang, 'restaurer')}</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+// ── Styles ────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe:  { flex: 1, backgroundColor: '#f5f3ee' },
-  app:   { flex: 1, backgroundColor: '#f5f3ee' },
+  safe:  { flex: 1 },
+  app:   { flex: 1 },
   header: {
-    paddingHorizontal: 28, paddingTop: 16, paddingBottom: 12,
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  logo: { fontFamily: 'PlayfairDisplay_900Black', fontSize: 26, letterSpacing: 6, color: '#1a1a1a' },
-  addBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center',
+  hamburger: { gap: 5, padding: 4 },
+  hLine: { width: 22, height: 1.5, borderRadius: 1 },
+  logo: {
+    fontFamily: 'PlayfairDisplay_900Black', fontSize: 24, letterSpacing: 6,
+    position: 'absolute', left: 0, right: 0, textAlign: 'center',
   },
-  addBtnText: { color: '#f5f3ee', fontSize: 22, lineHeight: 24, fontWeight: '300' },
+  headerStats: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statChip: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  creditChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  statEmoji: { fontSize: 12 },
+  statVal: { fontFamily: 'PlayfairDisplay_700Bold', fontSize: 12 },
+  addBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center', marginLeft: 4,
+  },
+  addBtnText: { fontSize: 20, lineHeight: 22, fontWeight: '300' },
   arena:  { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   counterArea: { marginTop: 28, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  counterNum: { fontFamily: 'PlayfairDisplay_700Bold', fontSize: 15, color: '#1a1a1a' },
-  counterLbl: { fontFamily: 'DMSans_300Light', fontSize: 10, letterSpacing: 2, color: '#aaa', textTransform: 'uppercase' },
+  counterNum: { fontFamily: 'PlayfairDisplay_700Bold', fontSize: 15 },
+  counterLbl: { fontFamily: 'DMSans_300Light', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' },
   undoToast: {
     position: 'absolute', bottom: 20,
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#1a1a1a', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 30,
+    paddingVertical: 10, paddingHorizontal: 20, borderRadius: 30,
   },
-  undoText: { fontFamily: 'PlayfairDisplay_400Regular', fontSize: 12, letterSpacing: 1, color: '#f5f3ee' },
-  undoBtn:  { fontFamily: 'PlayfairDisplay_700Bold', fontSize: 10, letterSpacing: 3, color: '#f0c040' },
-  listContainer: { width: '100%', paddingHorizontal: 32 },
-  listTitle: { fontFamily: 'PlayfairDisplay_700Bold', fontSize: 13, letterSpacing: 4, color: '#1a1a1a', marginBottom: 16 },
-  listItem:  { borderBottomWidth: 0.5, borderBottomColor: '#e0ddd6', paddingVertical: 12 },
-  listItemText: { fontFamily: 'PlayfairDisplay_400Regular', fontSize: 16, color: '#1a1a1a' },
-  listItemNote: { fontFamily: 'DMSans_300Light', fontSize: 12, color: '#aaa', marginTop: 3 },
-  listEmpty: { fontFamily: 'DMSans_300Light', fontSize: 13, letterSpacing: 1, color: '#aaa', fontStyle: 'italic' },
+  undoText: { fontFamily: 'PlayfairDisplay_400Regular', fontSize: 12, letterSpacing: 1 },
+  undoBtn:  { fontFamily: 'PlayfairDisplay_700Bold', fontSize: 10, letterSpacing: 3 },
+  listContainer: { flex: 1, width: '100%' },
+  listContent: { paddingHorizontal: 32, paddingTop: 8 },
+  listTitle: { fontFamily: 'PlayfairDisplay_700Bold', fontSize: 13, letterSpacing: 4, marginBottom: 16 },
+  listItem: {
+    borderBottomWidth: 0.5, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center',
+  },
+  listItemText: { fontFamily: 'PlayfairDisplay_400Regular', fontSize: 16, flex: 1 },
+  listItemNote: { fontFamily: 'DMSans_300Light', fontSize: 12, marginTop: 3 },
+  listEmpty: { fontFamily: 'DMSans_300Light', fontSize: 13, letterSpacing: 1, fontStyle: 'italic' },
+  restoreBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
+  restoreBtnText: { fontFamily: 'DMSans_400Regular', fontSize: 10, letterSpacing: 1 },
 });
